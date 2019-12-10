@@ -25,7 +25,7 @@ type SSHAuthority interface {
 	GetSSHRoots() (*authority.SSHKeys, error)
 	GetSSHFederation() (*authority.SSHKeys, error)
 	GetSSHConfig(typ string, data map[string]string) ([]templates.Output, error)
-	CheckSSHHost(principal string) (bool, error)
+	CheckSSHHost(principal string, isMTLS bool, token string) (bool, error)
 	GetSSHHosts(cert *x509.Certificate) ([]sshutil.Host, error)
 	GetSSHBastion(user string, hostname string) (*authority.Bastion, error)
 }
@@ -199,6 +199,7 @@ type SSHConfigResponse struct {
 type SSHCheckPrincipalRequest struct {
 	Type      string `json:"type"`
 	Principal string `json:"principal"`
+	Token     string `json:"token"`
 }
 
 // Validate checks the check principal request.
@@ -421,6 +422,11 @@ func (h *caHandler) SSHConfig(w http.ResponseWriter, r *http.Request) {
 
 // SSHCheckHost is the HTTP handler that returns if a hosts certificate exists or not.
 func (h *caHandler) SSHCheckHost(w http.ResponseWriter, r *http.Request) {
+	// authority.checkSSHHost has the option to require authentication. If mTLS
+	// was used then this requirement has been met, otherwise an x5c token
+	// will be required.
+	isMTLS := r.TLS != nil && len(r.TLS.PeerCertificates) > 0
+
 	var body SSHCheckPrincipalRequest
 	if err := ReadJSON(r.Body, &body); err != nil {
 		WriteError(w, BadRequest(errors.Wrap(err, "error reading request body")))
@@ -431,7 +437,7 @@ func (h *caHandler) SSHCheckHost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	exists, err := h.Authority.CheckSSHHost(body.Principal)
+	exists, err := h.Authority.CheckSSHHost(body.Principal, isMTLS, body.Token)
 	if err != nil {
 		WriteError(w, InternalServerError(err))
 		return

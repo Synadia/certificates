@@ -42,3 +42,11 @@ func WithSSHGetHosts(fn func(cert *x509.Certificate) ([]sshutil.Host, error)) Op
 		a.sshGetHostsFunc = fn
 	}
 }
+
+// WithSSHAuthCheckHost sets a custom function to get the bastion for a
+// given user-host pair.
+func WithSSHAuthCheckHost(fn func(auth *Authority, tok string) error) Option {
+	return func(a *Authority) {
+		a.sshAuthCheckHostFunc = fn
+	}
+}

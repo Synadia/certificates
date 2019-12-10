@@ -40,6 +40,7 @@ type Authority struct {
 	// Do not re-initialize
 	initOnce bool
 	// Custom functions
+	sshAuthCheckHostFunc func(auth *Authority, tok string) error
 	sshBastionFunc  func(user, hostname string) (*Bastion, error)
 	sshGetHostsFunc func(cert *x509.Certificate) ([]sshutil.Host, error)
 	getIdentityFunc provisioner.GetIdentityFunc

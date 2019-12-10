@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"crypto/x509"
 	"encoding/binary"
+	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -656,7 +657,32 @@ func (a *Authority) SignSSHAddUser(key ssh.PublicKey, subject *ssh.Certificate) 
 }
 
 // CheckSSHHost checks the given principal has been registered before.
-func (a *Authority) CheckSSHHost(principal string) (bool, error) {
+func (a *Authority) CheckSSHHost(principal string, isMTLS bool, token string) (bool, error) {
+	fmt.Printf("isMTLS = %+v\n", isMTLS)
+	fmt.Printf("token = %+v\n", token)
+	if !a.config.AuthorityConfig.DisableSSHCheckHostAuth {
+		switch {
+		case isMTLS:
+		case len(token) > 0:
+			if a.sshAuthCheckHostFunc == nil {
+				return false, &apiError{
+					err:  errors.New("checkSSHHost not using mTLS and no secondary auth function defined"),
+					code: http.StatusUnauthorized,
+				}
+			}
+			if err := a.sshAuthCheckHostFunc(a, token); err != nil {
+				return false, &apiError{
+					err:  errors.Wrap(err, "invalid authCheckSSHHost x5c"),
+					code: http.StatusUnauthorized,
+				}
+			}
+		default:
+			return false, &apiError{
+				err:  errors.New("authority requires checkHost authentication using mTLS or x5c token"),
+				code: http.StatusUnauthorized,
+			}
+		}
+	}
 	exists, err := a.db.IsSSHHost(principal)
 	if err != nil {
 		if err == db.ErrNotImplemented {
