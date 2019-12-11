@@ -84,7 +84,7 @@ func (a *Authority) Sign(csr *x509.CertificateRequest, signOpts provisioner.Opti
 			http.StatusBadRequest, errContext}
 	}
 
-	leaf, err := x509util.NewLeafProfileWithCSR(csr, issIdentity.Crt, issIdentity.Key, mods...)
+	leaf, err := x509util.NewIntermediateProfileWithCSR(csr, issIdentity.Crt, issIdentity.Key, mods...)
 	if err != nil {
 		return nil, &apiError{errors.Wrapf(err, "sign"), http.StatusInternalServerError, errContext}
 	}
